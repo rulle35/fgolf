@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Session, Shot, SessionAnalysis } from '@/lib/types'
 
@@ -12,6 +12,9 @@ export default function SessionDetailPage() {
   const [shots, setShots] = useState<Shot[]>([])
   const [analysis, setAnalysis] = useState<SessionAnalysis | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
@@ -86,6 +89,24 @@ export default function SessionDetailPage() {
     return (valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(1)
   }
 
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/dashboard')
+      } else {
+        alert('Failed to delete session. Please try again.')
+        setDeleting(false)
+        setShowDeleteModal(false)
+      }
+    } catch {
+      alert('Failed to delete session. Please try again.')
+      setDeleting(false)
+      setShowDeleteModal(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-950">
       <header className="border-b border-gray-800 px-6 py-4">
@@ -94,7 +115,15 @@ export default function SessionDetailPage() {
             <span className="text-xl font-bold text-emerald-400">F.</span>
             <span className="text-xl font-bold text-white">Golf</span>
           </Link>
-          <Link href="/dashboard" className="text-gray-400 hover:text-white transition text-sm">Dashboard</Link>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard" className="text-gray-400 hover:text-white transition text-sm">Dashboard</Link>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="text-gray-500 hover:text-red-400 transition text-sm"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </header>
 
@@ -235,6 +264,34 @@ export default function SessionDetailPage() {
           ))}
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-700 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-white mb-2">Delete Session?</h3>
+            <p className="text-gray-400 text-sm mb-6">
+              This will permanently delete this session, all {shots.length} shots, and the analysis. This can&apos;t be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white transition text-sm font-medium disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
