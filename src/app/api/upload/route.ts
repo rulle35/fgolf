@@ -42,13 +42,17 @@ Rules:
 - Extract every shot/row visible
 - Convert units if needed (meters to yards: multiply by 1.0936)
 - If a value is not visible or unreadable, use null
-- Be precise with numbers — don't round
+- Be precise with numbers â don't round
 - Identify the club from context clues (column header, club name, etc.)
 - If you can't determine club type, use the most likely based on the data
 - Return ONLY valid JSON, no markdown or explanation`
 
 export async function POST(request: Request) {
   try {
+    // Determine the app's base URL from the incoming request
+    const requestUrl = new URL(request.url)
+    const appBaseUrl = `${requestUrl.protocol}//${requestUrl.host}`
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -173,12 +177,12 @@ export async function POST(request: Request) {
         .eq('id', user.id)
     }
 
-    // Trigger async analysis (fire and forget — we'll build this endpoint next)
-    fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/analyze`, {
+    // Trigger async analysis using the request's own origin (not env var)
+    fetch(`${appBaseUrl}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: session.id, userId: user.id }),
-    }).catch(() => {}) // Don't block upload on analysis
+    }).catch((err) => console.error('Failed to trigger analysis:', err))
 
     return NextResponse.json({
       sessionId: session.id,
